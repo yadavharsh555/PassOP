@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { toast } from "react-toastify";
 
 const Auth = ({ onLoginSuccess, theme }) => {
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
   // authMode can be: "login" | "signup" | "verify" | "forgot" | "reset"
   const [authMode, setAuthMode] = useState("login");
   const [loading, setLoading] = useState(false);
@@ -148,7 +149,7 @@ const Auth = ({ onLoginSuccess, theme }) => {
           break;
       }
 
-      const response = await fetch(`http://localhost:3000${endpoint}`, {
+      const response = await fetch(`${API_URL}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -202,7 +203,7 @@ const Auth = ({ onLoginSuccess, theme }) => {
     const purpose = authMode === "verify" ? "verification" : "reset";
 
     try {
-      const response = await fetch("http://localhost:3000/api/auth/resend-otp", {
+      const response = await fetch(`${API_URL}/api/auth/resend-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: targetEmail, purpose }),

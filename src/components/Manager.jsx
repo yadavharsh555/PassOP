@@ -4,6 +4,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { v4 as uuidv4 } from "uuid";
 
 const Manager = ({ token, theme }) => {
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
   const isDark = theme === "dark";
   const ref = useRef();
   const passwordRef = useRef();
@@ -16,7 +17,7 @@ const Manager = ({ token, theme }) => {
 
   const getpassword = async () => {
     try {
-      let req = await fetch("http://localhost:3000/", {
+      let req = await fetch(`${API_URL}/`, {
         headers: {
           "Authorization": `Bearer ${token}`
         }
@@ -76,7 +77,7 @@ const Manager = ({ token, theme }) => {
       try {
         // If we are editing, first delete the old record
         if (form.id) {
-          await fetch("http://localhost:3000/", {
+          await fetch(`${API_URL}/`, {
             method: "DELETE",
             headers: {
               "Content-Type": "application/json",
@@ -90,7 +91,7 @@ const Manager = ({ token, theme }) => {
         const payload = { ...form, id: newId };
 
         // Save new/updated record to Mongo
-        let response = await fetch("http://localhost:3000/", {
+        let response = await fetch(`${API_URL}/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -119,7 +120,7 @@ const Manager = ({ token, theme }) => {
     let c = confirm("Are you sure you want to permanently delete this credentials record?");
     if (c) {
       try {
-        let res = await fetch("http://localhost:3000/", {
+        let res = await fetch(`${API_URL}/`, {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
