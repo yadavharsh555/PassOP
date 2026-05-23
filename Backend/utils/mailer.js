@@ -14,6 +14,7 @@ async function getTransporter() {
         host: process.env.SMTP_HOST || "smtp.gmail.com",
         port: parseInt(process.env.SMTP_PORT || "587"),
         secure: process.env.SMTP_PORT === "465", // true for 465, false for others
+        family: 4, // Forces Nodemailer to use IPv4 only and bypasses Render's IPv6 firewall block!
         auth: {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS,
