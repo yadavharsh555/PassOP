@@ -1,4 +1,6 @@
 const express = require("express");
+const dns = require("dns");
+dns.setDefaultResultOrder("ipv4first"); // Force Node to prioritize IPv4 and bypass Render's IPv6 ENETUNREACH firewall block!
 const mongoose = require("mongoose");
 const cors = require("cors");
 const bodyParser = require("body-parser");
@@ -15,6 +17,7 @@ const { encrypt, decrypt } = require("./utils/crypto");
 const { sendOTPEmail } = require("./utils/mailer");
 
 const app = express();
+app.set("trust proxy", 1); // Crucial for hosting on Render/Vercel behind proxies to let express-rate-limit read IPs correctly!
 const PORT = process.env.PORT || 3000;
 const URI = process.env.MongoDBURI || "mongodb://localhost:27017/passop";
 const JWT_SECRET = process.env.JWT_SECRET || "PassOP_JWT_Super_Secret_Salt_Key";
