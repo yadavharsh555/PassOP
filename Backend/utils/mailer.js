@@ -3,72 +3,41 @@ const nodemailer = require("nodemailer");
 let cachedTransporter = null;
 
 /**
- * Send email using Brevo's HTTP API (bypasses all cloud SMTP port blocks!)
- * @param {string} to Receiver's email
- * @param {string} subject Email subject
- * @param {string} htmlContent HTML formatted email body
- * @param {string} apiKey Brevo API key
- * @param {string} senderEmail Verified Brevo sender email
- */
-async function sendViaBrevoAPI(to, subject, htmlContent, apiKey, senderEmail) {
-  const payload = {
-    sender: { name: "PassOP Vault", email: senderEmail },
-    to: [{ email: to }],
-    subject: subject,
-    htmlContent: htmlContent,
-  };
-
-  try {
-    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-      method: "POST",
-      headers: {
-        "accept": "application/json",
-        "api-key": apiKey,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await response.json();
-    if (response.ok) {
-      console.log(`SUCCESS: Brevo HTTPS API email delivered to ${to}. Message ID: ${data.messageId}`);
-      return true;
-    } else {
-      console.error("FAILURE: Brevo API rejected email:", data);
-      return false;
-    }
-  } catch (err) {
-    console.error("FAILURE: Brevo HTTPS request failed:", err.message);
-    return false;
-  }
-}
-
-/**
  * Get or create Nodemailer SMTP Transporter
+ * Safely parses and trims all environment variables to prevent hidden Windows carriage return (\r) bugs.
  */
 async function getTransporter() {
   const isSMTPConfigured = process.env.SMTP_USER && process.env.SMTP_PASS;
 
   if (isSMTPConfigured) {
     if (!cachedTransporter) {
+      const host = (process.env.SMTP_HOST || "smtp.gmail.com").trim();
+      const rawPort = (process.env.SMTP_PORT || "465").trim();
+      const port = parseInt(rawPort, 10);
+      const secure = rawPort === "465";
+      const user = process.env.SMTP_USER.trim();
+      const pass = process.env.SMTP_PASS.trim();
+
+      console.log(`🔧 Creating Nodemailer SMTP Transporter to [${host}:${port}] (Secure SSL: ${secure})...`);
+
       cachedTransporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || "smtp.gmail.com",
-        port: parseInt(process.env.SMTP_PORT || "587"),
-        secure: process.env.SMTP_PORT === "465",
-        family: 4, // Force IPv4 to bypass Render IPv6 firewall blocks
+        host,
+        port,
+        secure,
+        family: 4, // Force IPv4 to completely bypass Render's IPv6 ENETUNREACH blocks!
         auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
+          user,
+          pass,
         },
         tls: {
-          rejectUnauthorized: false,
+          rejectUnauthorized: false, // Prevents certificate self-signed blocks
         },
       });
     }
     return { transporter: cachedTransporter, isRealSMTP: true };
   }
 
-  // Fallback: Ethereal SMTP test account
+  // Fallback: Ethereal SMTP test account (for development if variables are not set)
   if (!cachedTransporter) {
     console.log("Generating Ethereal SMTP Test Account for real email verification in development...");
     try {
@@ -121,17 +90,7 @@ async function sendOTPEmail(to, subject, otp, purpose) {
   console.log(`🔢 One-Time Password (OTP): [ ${otp} ]`);
   console.log("==================================================");
 
-  const apiKey = process.env.BREVO_API_KEY || process.env.SMTP_PASS;
-  const isBrevoAPIKey = apiKey && (apiKey.startsWith("xsmtpsib-") || apiKey.startsWith("xkeysib-"));
-
-  // 1. If a Brevo API key is detected, use the HTTPS API over port 443 (Firewall-Proof!)
-  if (isBrevoAPIKey) {
-    console.log("⚡ Brevo Key detected! Dispatching via high-speed HTTPS API (Bypasses cloud SMTP port blocks)...");
-    const senderEmail = process.env.SMTP_USER || "ac4803001@smtp-brevo.com";
-    return await sendViaBrevoAPI(to, subject, htmlContent, apiKey, senderEmail);
-  }
-
-  // 2. Otherwise, use standard SMTP transporter
+  // Use standard SMTP transporter
   const { transporter, isRealSMTP } = await getTransporter();
 
   if (!transporter) {
@@ -140,8 +99,9 @@ async function sendOTPEmail(to, subject, otp, purpose) {
   }
 
   try {
+    const smtpUser = (process.env.SMTP_USER || "").trim();
     const info = await transporter.sendMail({
-      from: isRealSMTP ? `"PassOP Vault" <${process.env.SMTP_USER}>` : '"PassOP Test Vault" <no-reply@passop.com>',
+      from: isRealSMTP ? `"PassOP Vault" <${smtpUser}>` : '"PassOP Test Vault" <no-reply@passop.com>',
       to,
       subject,
       html: htmlContent,
