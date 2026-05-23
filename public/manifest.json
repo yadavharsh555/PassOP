@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "PassOP Secure Vault",
+  "version": "1.0.0",
+  "description": "Your own zero-knowledge AES-256 encrypted password manager.",
+  "action": {
+    "default_popup": "index.html",
+    "default_icon": "wired-outline-946-equity-security-hover-locked-new3.gif"
+  },
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  }
+}
