@@ -3,6 +3,47 @@ const nodemailer = require("nodemailer");
 let cachedTransporter = null;
 
 /**
+ * Send email using Brevo's HTTP API (bypasses all cloud SMTP port blocks!)
+ * @param {string} to Receiver's email
+ * @param {string} subject Email subject
+ * @param {string} htmlContent HTML formatted email body
+ * @param {string} apiKey Brevo API key
+ * @param {string} senderEmail Verified Brevo sender email
+ */
+async function sendViaBrevoAPI(to, subject, htmlContent, apiKey, senderEmail) {
+  const payload = {
+    sender: { name: "PassOP Vault", email: senderEmail },
+    to: [{ email: to }],
+    subject: subject,
+    htmlContent: htmlContent,
+  };
+
+  try {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "accept": "application/json",
+        "api-key": apiKey,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      console.log(`SUCCESS: Brevo HTTPS API email delivered to ${to}. Message ID: ${data.messageId}`);
+      return true;
+    } else {
+      console.error("FAILURE: Brevo API rejected email:", data);
+      return false;
+    }
+  } catch (err) {
+    console.error("FAILURE: Brevo HTTPS request failed:", err.message);
+    return false;
+  }
+}
+
+/**
  * Get or create Nodemailer SMTP Transporter
  */
 async function getTransporter() {
@@ -13,21 +54,21 @@ async function getTransporter() {
       cachedTransporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST || "smtp.gmail.com",
         port: parseInt(process.env.SMTP_PORT || "587"),
-        secure: process.env.SMTP_PORT === "465", // true for 465, false for others
-        family: 4, // Forces Nodemailer to use IPv4 only and bypasses Render's IPv6 firewall block!
+        secure: process.env.SMTP_PORT === "465",
+        family: 4, // Force IPv4 to bypass Render IPv6 firewall blocks
         auth: {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS,
         },
         tls: {
-          rejectUnauthorized: false // Prevents SSL/TLS certificate verification blocks in cloud container systems!
-        }
+          rejectUnauthorized: false,
+        },
       });
     }
     return { transporter: cachedTransporter, isRealSMTP: true };
   }
 
-  // Fallback: Dynamically generate a real Ethereal SMTP test account
+  // Fallback: Ethereal SMTP test account
   if (!cachedTransporter) {
     console.log("Generating Ethereal SMTP Test Account for real email verification in development...");
     try {
@@ -43,7 +84,6 @@ async function getTransporter() {
       });
     } catch (err) {
       console.error("Failed to create Ethereal SMTP test account:", err.message);
-      // Fallback to basic logging if test account creation fails
       return { transporter: null, isRealSMTP: false };
     }
   }
@@ -59,8 +99,6 @@ async function getTransporter() {
  * @param {string} purpose Description of purpose
  */
 async function sendOTPEmail(to, subject, otp, purpose) {
-  const { transporter, isRealSMTP } = await getTransporter();
-
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #1e293b; background-color: #0b1329; color: #f8fafc; border-radius: 12px;">
       <h2 style="color: #10b981; text-align: center; font-size: 24px; font-weight: bold;">PassOP Secure Vault</h2>
@@ -83,6 +121,19 @@ async function sendOTPEmail(to, subject, otp, purpose) {
   console.log(`🔢 One-Time Password (OTP): [ ${otp} ]`);
   console.log("==================================================");
 
+  const apiKey = process.env.BREVO_API_KEY || process.env.SMTP_PASS;
+  const isBrevoAPIKey = apiKey && (apiKey.startsWith("xsmtpsib-") || apiKey.startsWith("xkeysib-"));
+
+  // 1. If a Brevo API key is detected, use the HTTPS API over port 443 (Firewall-Proof!)
+  if (isBrevoAPIKey) {
+    console.log("⚡ Brevo Key detected! Dispatching via high-speed HTTPS API (Bypasses cloud SMTP port blocks)...");
+    const senderEmail = process.env.SMTP_USER || "ac4803001@smtp-brevo.com";
+    return await sendViaBrevoAPI(to, subject, htmlContent, apiKey, senderEmail);
+  }
+
+  // 2. Otherwise, use standard SMTP transporter
+  const { transporter, isRealSMTP } = await getTransporter();
+
   if (!transporter) {
     console.warn("⚠️ SMTP could not be configured. OTP is printed in console above.");
     return false;
@@ -97,7 +148,7 @@ async function sendOTPEmail(to, subject, otp, purpose) {
     });
 
     if (isRealSMTP) {
-      console.log(`SUCCESS: Real email delivered to ${to}`);
+      console.log(`SUCCESS: SMTP email delivered to ${to}`);
     } else {
       const emailPreviewUrl = nodemailer.getTestMessageUrl(info);
       console.log(`📧 REAL EMAIL SENT (via Ethereal test inbox)!`);
