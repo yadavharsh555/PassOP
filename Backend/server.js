@@ -523,6 +523,10 @@ app.delete("/", authenticateToken, async (req, res) => {
 });
 
 // Listen
-app.listen(PORT, () => {
-  console.log(`PassOP secure server running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`PassOP secure server running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
