@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { toast } from "react-toastify";
 
 const Auth = ({ onLoginSuccess, theme }) => {
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+  const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:3000").replace(/\/$/, "");
   // authMode can be: "login" | "signup" | "verify" | "forgot" | "reset"
   const [authMode, setAuthMode] = useState("login");
   const [loading, setLoading] = useState(false);

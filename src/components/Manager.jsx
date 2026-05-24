@@ -4,7 +4,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { v4 as uuidv4 } from "uuid";
 
 const Manager = ({ token, theme }) => {
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+  const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:3000").replace(/\/$/, "");
   const isDark = theme === "dark";
   const ref = useRef();
   const passwordRef = useRef();
