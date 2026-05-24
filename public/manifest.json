@@ -5,7 +5,13 @@
   "description": "Your own zero-knowledge AES-256 encrypted password manager.",
   "action": {
     "default_popup": "index.html",
-    "default_icon": "wired-outline-946-equity-security-hover-locked-new3.gif"
+    "default_icon": "icon.png"
+  },
+  "icons": {
+    "16": "icon.png",
+    "32": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
   },
   "permissions": [
     "storage",
