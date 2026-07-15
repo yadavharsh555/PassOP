@@ -11,6 +11,12 @@ function App() {
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "dark");
 
   useEffect(() => {
+    // Detect Chrome Extension context
+    const isExtension = typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id;
+    if (isExtension) {
+      document.body.classList.add("chrome-extension-body");
+    }
+
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       try {
